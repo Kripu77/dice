@@ -137,3 +137,25 @@ func (node *byteListNode) deepCopyNode(prevCopy *byteListNode) *byteListNode {
 
 	return copyNode
 }
+
+
+//methods to remove the head and the tail node
+func(b *byteList) removeHead() *byteListNode{
+	if b.head == nil{
+		return nil
+	}
+	headNode := b.head
+	b.delete(headNode)
+	return headNode;
+
+}
+
+
+func(b *byteList) removeTail() *byteListNode{
+	if b.tail == nil{
+		return nil
+	}
+	tailNode := b.tail
+	b.delete(tailNode)
+	return tailNode
+}
