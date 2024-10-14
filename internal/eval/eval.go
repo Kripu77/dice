@@ -3706,11 +3706,22 @@ func evalRPOP(args []string, store *dstore.Store) []byte {
 }
 
 func evalLPOP(args []string, store *dstore.Store) []byte {
-	if len(args) != 1 {
+	if len(args) < 1 || len(args)>2{
 		return diceerrors.NewErrArity("LPOP")
 	}
 
 	obj := store.Get(args[0])
+	
+	var count int64 = 1
+
+	if len(args) == 2 {
+		var err error
+		count, err = strconv.ParseInt(args[1], 10, 64)
+		if err != nil || count < 0 {
+			return diceerrors.NewErrArity("LPOP")
+		}
+	}
+
 	if obj == nil {
 		return clientio.RespNIL
 	}
@@ -3729,7 +3740,7 @@ func evalLPOP(args []string, store *dstore.Store) []byte {
 	}
 
 	deq := obj.Value.(*Deque)
-	x, err := deq.LPop()
+	x, err := deq.LPop(count)
 	if err != nil {
 		if errors.Is(err, ErrDequeEmpty) {
 			return clientio.RespNIL
