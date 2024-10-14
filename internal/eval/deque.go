@@ -12,11 +12,12 @@ var ErrDequeEmpty = errors.New("deque is empty")
 type DequeI interface {
 	LPush(string)
 	RPush(string)
-	LPop() (string, error)
+	LPop(...int64) ([]string, error)
 	RPop() (string, error)
 }
 
 var _ DequeI = (*DequeBasic)(nil)
+
 
 type DequeBasic struct {
 	Length int64
@@ -24,10 +25,9 @@ type DequeBasic struct {
 }
 
 func NewBasicDeque() *DequeBasic {
-	l := &DequeBasic{
+	return &DequeBasic{
 		Length: 0,
 	}
-	return l
 }
 
 // LPush pushes `x` into the left side of the Deque.
@@ -78,19 +78,31 @@ func (q *DequeBasic) RPop() (string, error) {
 	return x, nil
 }
 
-// LPop pops an element from the left side of the Deque.
-func (q *DequeBasic) LPop() (string, error) {
+// LPop pops an element from the left side of the Deque, if the count is present it iterates through and removes the number of elements based on the count from the left hand side.
+func (q *DequeBasic) LPop(count ...int64) ([]string, error) {
 	if q.Length == 0 {
-		return "", ErrDequeEmpty
+		return nil, ErrDequeEmpty
 	}
 
-	x, entryLen := DecodeDeqEntry(q.buf)
+	//determine the count of elements to be popped
+	popCount := int64(1)
+	if len(count) > 0 && count[0] > 0 {
+		popCount = count[0]
+	}
 
-	copy(q.buf, q.buf[entryLen:])
-	q.buf = q.buf[:len(q.buf)-entryLen]
-	q.Length--
 
-	return x, nil
+	//pre-allocating the results slice
+	results := make([]string, 0, min(popCount, q.Length))
+
+	for i := int64(0); i < popCount && q.Length > 0; i++ {
+		x, entryLen := DecodeDeqEntry(q.buf)
+		results = append(results, x)
+
+		q.buf = q.buf[entryLen:]
+		q.Length--
+	}
+
+	return results, nil
 }
 
 const (
@@ -170,22 +182,37 @@ func (q *Deque) RPush(x string) {
 	q.Length++
 }
 
-func (q *Deque) LPop() (string, error) {
+func (q *Deque) LPop(count ...int64) ([]string, error) {
 	if q.Length == 0 {
-		return "", ErrDequeEmpty
+		return nil, ErrDequeEmpty
 	}
 
-	head := q.list.head
-	x, entryLen := DecodeDeqEntry(head.buf[q.leftIdx:])
-
-	q.leftIdx += entryLen
-	if q.leftIdx == len(head.buf) {
-		q.list.delete(head)
-		q.leftIdx = 0
+	popCount := int64(1)
+	if len(count) > 0 && count[0] > 0 {
+		popCount = count[0]
 	}
-	q.Length--
 
-	return x, nil
+	results := make([]string, 0, min(popCount, q.Length))
+
+	for i := int64(0); i < popCount && q.Length > 0; i++ {
+		head := q.list.head
+		if head == nil {
+			break
+		}
+
+		x, entryLen := DecodeDeqEntry(head.buf[q.leftIdx:])
+		results = append(results, x)
+
+		q.leftIdx += entryLen
+		q.Length--
+
+		if q.leftIdx == len(head.buf) {
+			q.list.removeHead()
+			q.leftIdx = 0
+		}
+	}
+
+	return results, nil
 }
 
 func (q *Deque) RPop() (string, error) {
