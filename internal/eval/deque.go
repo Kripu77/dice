@@ -12,7 +12,7 @@ var ErrDequeEmpty = errors.New("deque is empty")
 type DequeI interface {
 	LPush(string)
 	RPush(string)
-	LPop(...int64) ([]string, error)
+	LPop(int64) ([]string, error)
 	RPop() (string, error)
 }
 
@@ -79,22 +79,17 @@ func (q *DequeBasic) RPop() (string, error) {
 }
 
 // LPop pops an element from the left side of the Deque, if the count is present it iterates through and removes the number of elements based on the count from the left hand side.
-func (q *DequeBasic) LPop(count ...int64) ([]string, error) {
+func (q *DequeBasic) LPop(count int64) ([]string, error) {
 	if q.Length == 0 {
 		return nil, ErrDequeEmpty
 	}
 
-	//determine the count of elements to be popped
-	popCount := int64(1)
-	if len(count) > 0 && count[0] > 0 {
-		popCount = count[0]
-	}
 
 
 	//pre-allocating the results slice
-	results := make([]string, 0, min(popCount, q.Length))
+	results := make([]string, 0, min(count, q.Length))
 
-	for i := int64(0); i < popCount && q.Length > 0; i++ {
+	for i := int64(0); i < count && q.Length > 0; i++ {
 		x, entryLen := DecodeDeqEntry(q.buf)
 		results = append(results, x)
 
@@ -182,26 +177,22 @@ func (q *Deque) RPush(x string) {
 	q.Length++
 }
 
-func (q *Deque) LPop(count ...int64) ([]string, error) {
+func (q *Deque) LPop(count int64) ([]string, error) {
 	if q.Length == 0 {
 		return nil, ErrDequeEmpty
 	}
 
-	popCount := int64(1)
-	if len(count) > 0 && count[0] > 0 {
-		popCount = count[0]
-	}
+   //pre-allocated
+	pops := make([]string, 0, min(count, q.Length))
 
-	results := make([]string, 0, min(popCount, q.Length))
-
-	for i := int64(0); i < popCount && q.Length > 0; i++ {
+	for i := int64(0); i < count && q.Length > 0; i++ {
 		head := q.list.head
 		if head == nil {
 			break
 		}
 
 		x, entryLen := DecodeDeqEntry(head.buf[q.leftIdx:])
-		results = append(results, x)
+		pops = append(pops, x)
 
 		q.leftIdx += entryLen
 		q.Length--
@@ -212,7 +203,7 @@ func (q *Deque) LPop(count ...int64) ([]string, error) {
 		}
 	}
 
-	return results, nil
+	return pops, nil
 }
 
 func (q *Deque) RPop() (string, error) {
