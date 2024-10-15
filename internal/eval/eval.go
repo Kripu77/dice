@@ -3711,14 +3711,14 @@ func evalLPOP(args []string, store *dstore.Store) []byte {
 	}
 
 	obj := store.Get(args[0])
-	
-	var count int64 = 1
+
+	count:= int64(1)
 
 	if len(args) == 2 {
 		var err error
 		count, err = strconv.ParseInt(args[1], 10, 64)
 		if err != nil || count < 0 {
-			return diceerrors.NewErrArity("LPOP")
+			return diceerrors.NewErrWithFormattedMessage(diceerrors.InvalidIntErr)
 		}
 	}
 
