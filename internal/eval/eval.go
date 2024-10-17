@@ -3717,8 +3717,8 @@ func evalLPOP(args []string, store *dstore.Store) []byte {
 	if len(args) == 2 {
 		var err error
 		count, err = strconv.ParseInt(args[1], 10, 64)
-		if err != nil || count < 0 {
-			return diceerrors.NewErrWithFormattedMessage(diceerrors.InvalidIntErr)
+		if err != nil || count <= 0 {
+			return diceerrors.NewErrWithFormattedMessage(diceerrors.IntOrOutOfRangeErr)
 		}
 	}
 
@@ -3748,7 +3748,13 @@ func evalLPOP(args []string, store *dstore.Store) []byte {
 		panic(fmt.Sprintf("unknown error: %v", err))
 	}
 
-	return clientio.Encode(x, false)
+
+    //if only one element is popped
+	if x.Single != nil {
+		return clientio.Encode(*x.Single, false) 
+	}
+	//if multiple elements are popped
+	return clientio.Encode(x.Multiple, false)
 }
 
 func evalLLEN(args []string, store *dstore.Store) []byte {
