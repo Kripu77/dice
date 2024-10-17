@@ -3,16 +3,20 @@ package eval
 import (
 	"errors"
 	"strconv"
-
 	"github.com/dicedb/dice/internal/dencoding"
 )
 
 var ErrDequeEmpty = errors.New("deque is empty")
 
+type LPopResult struct{
+	Single *string
+	Multiple []string
+}
+
 type DequeI interface {
 	LPush(string)
 	RPush(string)
-	LPop(int64) ([]string, error)
+	LPop(int64) (LPopResult, error)
 	RPop() (string, error)
 }
 
@@ -23,6 +27,8 @@ type DequeBasic struct {
 	Length int64
 	buf    []byte
 }
+
+
 
 func NewBasicDeque() *DequeBasic {
 	return &DequeBasic{
@@ -79,25 +85,29 @@ func (q *DequeBasic) RPop() (string, error) {
 }
 
 // LPop pops an element from the left side of the Deque, if the count is present it iterates through and removes the number of elements based on the count from the left hand side.
-func (q *DequeBasic) LPop(count int64) ([]string, error) {
+func (q *DequeBasic) LPop(count int64) (LPopResult, error) {
+
 	if q.Length == 0 {
-		return nil, ErrDequeEmpty
+		return LPopResult{}, ErrDequeEmpty
 	}
 
-
-
-	//pre-allocating the results slice
-	results := make([]string, 0, min(count, q.Length))
+	//pre-allocating the pops slice
+	pops := make([]string, 0, min(count, q.Length))
 
 	for i := int64(0); i < count && q.Length > 0; i++ {
 		x, entryLen := DecodeDeqEntry(q.buf)
-		results = append(results, x)
-
+		pops = append(pops, x)
 		q.buf = q.buf[entryLen:]
 		q.Length--
 	}
 
-	return results, nil
+
+
+	if len(pops) == 1{
+		return  LPopResult{Single: &pops[0]}, nil
+	}
+
+	return LPopResult{Multiple: pops}, nil
 }
 
 const (
@@ -177,9 +187,9 @@ func (q *Deque) RPush(x string) {
 	q.Length++
 }
 
-func (q *Deque) LPop(count int64) ([]string, error) {
+func (q *Deque) LPop(count int64) (LPopResult, error) {
 	if q.Length == 0 {
-		return nil, ErrDequeEmpty
+		return LPopResult{}, ErrDequeEmpty
 	}
 
    //pre-allocated
@@ -203,7 +213,11 @@ func (q *Deque) LPop(count int64) ([]string, error) {
 		}
 	}
 
-	return pops, nil
+	if len(pops) == 1 {
+        return LPopResult{Single: &pops[0]}, nil 
+    }
+
+	return LPopResult{Multiple: pops}, nil 
 }
 
 func (q *Deque) RPop() (string, error) {
