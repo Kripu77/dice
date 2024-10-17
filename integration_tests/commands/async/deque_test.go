@@ -188,12 +188,18 @@ func TestLPushLPop(t *testing.T) {
 			cmds:   append([]string{"LPUSH k " + strings.Join(deqEdgeValues, " ")}, getPops(deqEdgeValues)...),
 			expect: append(append([]any{int64(17)}, getPopExpects(deqEdgeValues)...), "(nil)"),
 		},
+		{
+			name:   "LPUSH LPOP with COUNT 3",
+			cmds:   []string{"LPUSH k v1 v2 v3", "LPOP k 3"},
+			expect: []any{int64(3), []string{"v3", "v2", "v1"}},
+		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			for i, cmd := range tc.cmds {
 				result := FireCommand(conn, cmd)
+				t.Logf("Command: %s, Result: %v", cmd, result)
 				assert.Equal(t, tc.expect[i], result, "Value mismatch for cmd %s", cmd)
 			}
 		})
